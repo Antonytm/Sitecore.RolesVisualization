@@ -1,0 +1,104 @@
+@using Sitecore.Mvc
+@using Sitecore.Mvc.Presentation
+@using Sitecore.Web.UI.Controls.Common.UserControls
+@using System;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Text;
+@using System.Web;
+@using System.Web.UI;
+@using System.Web.UI.WebControls;
+@using Sitecore.Security.Accounts;
+@model RenderingModel
+@{
+    const string domain = "sitecore";
+    var roles = Sitecore.Security.Domains.Domain.GetDomain(domain).GetRoles();
+
+    var listRoles = new List<string>();
+    var rolesConnections = new List<Tuple<string,string>>();
+    foreach (Sitecore.Security.Accounts.Role role in roles)
+    {
+        listRoles.Add(role.Name.Replace(" ", " ").Replace("sitecore\\", ""));
+    }
+    
+    foreach (Sitecore.Security.Accounts.Role role in roles)
+    {
+        var name1 = role.Name.Replace(" ", " ").Replace("sitecore\\", "");
+        var roleMembers = Sitecore.Security.Accounts.RolesInRolesManager.GetRoleMembers(role, false);
+        foreach (var roleMember in roleMembers)
+        {
+            var name2 = roleMember.Name.Replace(" ", " ").Replace("sitecore\\", "");
+            rolesConnections.Add(new Tuple<string, string>(listRoles.IndexOf(name1).ToString(), listRoles.IndexOf(name2).ToString()));
+        }
+    }
+}
+
+<style type="text/css">
+    #mynetwork {
+        width: 1170px;
+        height: 900px;
+        border: 1px solid lightgray;
+    }
+</style>
+
+<script type="text/javascript">
+    require.config({
+        paths: {
+            vis: '/sitecore/shell/client/Applications/RolesVisualizer/vis',
+            jquery: '/sitecore/shell/client/Speak/Assets/lib/core/1.1/deps/jQuery/jquery-2.1.1'
+        }
+    });
+</script>
+<link href="/sitecore/shell/client/Applications/RolesVisualizer/vis.css" rel="stylesheet" type="text/css">
+
+<script type="text/javascript">
+
+    require(['vis', 'jquery'], function (vis) {
+        function draw() {
+            // create some nodes
+            var nodes = [
+                @MvcHtmlString.Create("{ id: " + 0 + ", 'label': '"+listRoles[0]+"', 'group': 1 }\n\r")
+                @for (int i = 1; i < listRoles.Count; i++ )
+                {
+                    @MvcHtmlString.Create(",{ id: " + i.ToString() + ", 'label': '"+listRoles[i]+"', 'group': 1 }\n\r");
+                }
+            ];
+
+            jQuery.each(nodes, function () {
+                this.label.replace(/\s/g, "\n");
+                
+                console.log(this.label);
+            });
+
+            for (var i = 0; i < nodes.length; i++) {
+                nodes[i].label = nodes[i].label.replace(/\s/g, "\n");
+            }
+
+            // create some edges
+            var edges = [
+                @Html.Raw("{ 'from': "+rolesConnections[0].Item1+", 'to': "+rolesConnections[0].Item2+" }\n\r")
+                @for (int i = 1; i < rolesConnections.Count; i++)
+                {
+                    @Html.Raw(",{ 'from': "+rolesConnections[i].Item1+", 'to': "+rolesConnections[i].Item2+" }\n\r")
+                }
+            ];
+
+            // create a network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            var options = { nodes: { shape: 'circle' }, edges: { style: "arrow" }, stabilize: true, physics: { hierarchicalRepulsion: { nodeDistance: 100, springLength: 500, springConstant: 0, damping: 0.3 } }, hierarchicalLayout: { levelSeparation: 150, nodeSpacing: 50 }, smoothCurves: false };
+            var network = new vis.Network(container, data, options);
+
+        }
+        draw();
+    });
+    </script>
+
+<div id="mynetwork">
+    <div class="vis network-frame" style="position: relative; overflow: hidden; -webkit-user-select: none; touch-action: pan-y; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); width: 100%; height: 100%;">
+        <canvas width="1170" height="900" style="position: relative; -webkit-user-select: none; touch-action: pan-y; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); width: 100%; height: 100%;"></canvas>
+    </div>
+</div>
